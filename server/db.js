@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, 'data');
 // La ubicación de la base se puede sobreescribir con la variable VOLTECH_DB
 // (útil para tests o para colocar la base fuera del proyecto).
-const DB_PATH = process.env.VOLTECH_DB || join(DATA_DIR, 'voltech.db');
+export const DB_PATH = process.env.VOLTECH_DB || join(DATA_DIR, 'voltech.db');
 const SEED_PATH = join(DATA_DIR, 'seed.json');
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });

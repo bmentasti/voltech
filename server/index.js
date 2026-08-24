@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize } from 'node:path';
-import { db, initDb, uuid, getSetting, setSetting, getAllSettings, audit } from './db.js';
+import { db, initDb, uuid, getSetting, setSetting, getAllSettings, audit, DB_PATH } from './db.js';
 import { hashPassword, verifyPassword, newToken } from './auth.js';
 import { computeLine, computeQuoteTotals } from './pricing.js';
 import { fetchOfficialRate } from './exchange.js';
@@ -787,7 +787,9 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log('\n  ⚡ VOLTECH — Presupuestos & Gestión');
   console.log(`  ▸ Servidor en  http://localhost:${PORT}`);
-  console.log('  ▸ Usuario: Voltech   Contraseña: Lauti123\n');
+  console.log(`  ▸ Base de datos: ${DB_PATH}`);
+  const persistente = /^\/var\/data\//.test(DB_PATH) || !!process.env.VOLTECH_DB;
+  console.log(`  ▸ Persistencia: ${persistente ? 'DISCO PERSISTENTE ✔' : 'DISCO TEMPORAL ✘ (se borra en cada deploy)'}\n`);
 });
 
 // ---------- Actualización automática del dólar cada 30 minutos ----------
