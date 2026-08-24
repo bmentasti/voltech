@@ -1,0 +1,20 @@
+{
+  "name": "voltech-presupuestos-gestion",
+  "version": "0.1.0",
+  "description": "VOLTECH — Presupuestos & Gestión. Sistema de cotización y gestión comercial. Núcleo end-to-end del cotizador.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js",
+    "reset-db": "node -e \"import('node:fs').then(fs=>{try{fs.unlinkSync('server/data/voltech.db')}catch{}; console.log('DB borrada')})\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "xlsx": "^0.18.5"
+  }
+}

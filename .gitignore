@@ -1,0 +1,7 @@
+node_modules/
+server/data/voltech.db
+server/data/voltech.db-journal
+server/data/voltech.db-wal
+server/data/voltech.db-shm
+*.log
+.DS_Store
