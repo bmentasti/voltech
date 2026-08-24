@@ -137,9 +137,10 @@ function renderApp() {
         <nav class="nav">${NAV.map((n) => `<a href="${n.path}" data-path="${n.path}">${n.icon}<span>${n.label}</span>${n.soon ? '<span class="soon">pronto</span>' : ''}</a>`).join('')}</nav>
         <div class="sidebar-foot">v0.1 · Núcleo cotizador<br/>Lista: ${esc(S.settings.priceListDate || '—')}</div>
       </aside>
+      <div class="sidebar-backdrop" id="sb-backdrop"></div>
       <div class="main">
         <div class="topbar">
-          <button class="icon-btn" id="burger" style="display:none">☰</button>
+          <button class="icon-btn burger" id="burger" aria-label="Abrir menú">☰</button>
           <h2 id="page-title">Dashboard</h2>
           <div class="spacer"></div>
           <div class="dollar-chip" id="dollar-chip"></div>
@@ -152,6 +153,11 @@ function renderApp() {
   renderDollarChip();
   $('#btn-refresh-dollar').addEventListener('click', refreshDollar);
   $('#avatar').addEventListener('click', userMenu);
+  // sidebar móvil
+  const closeSidebar = () => { $('#sidebar').classList.remove('open'); $('#sb-backdrop').classList.remove('show'); };
+  $('#burger').addEventListener('click', () => { $('#sidebar').classList.toggle('open'); $('#sb-backdrop').classList.toggle('show'); });
+  $('#sb-backdrop').addEventListener('click', closeSidebar);
+  document.querySelectorAll('.nav a').forEach((a) => a.addEventListener('click', closeSidebar));
   window.addEventListener('hashchange', router);
   if (!location.hash) location.hash = '#/dashboard';
   router();
@@ -535,7 +541,7 @@ async function viewQuoteDetail(c, id) {
       <div><a href="#/presupuestos" class="muted" style="font-size:12px">← Presupuestos</a>
         <h3>${esc(q.number)} <span class="st ${stClass(q.status)}">${esc(q.status)}</span></h3>
         <div class="sub">${esc(q.customer_name || 'Sin cliente')} · ${fmtDate(v.date)}</div></div>
-      <div style="display:flex;gap:10px">
+      <div class="page-actions">
         <select id="status">${STATES.map((s) => `<option ${s === q.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
         <button class="btn" id="wa">Copiar para WhatsApp</button>
         <button class="btn primary" id="pdf">${I.doc} PDF</button>
