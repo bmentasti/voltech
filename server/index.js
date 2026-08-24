@@ -250,6 +250,19 @@ route('GET', '/api/customers/:id', async (req, res, p) => {
   send(res, 200, c);
 });
 
+// --- Alta de cliente por formulario público (sin autenticación) ---
+route('POST', '/api/public/intake', async (req, res) => {
+  const b = await readBody(req);
+  const cap = (v, n = 200) => (v == null ? null : String(v).trim().slice(0, n) || null);
+  const name = cap(b.name);
+  if (!name) return sendErr(res, 400, 'Ingresá tu nombre o razón social');
+  const id = uuid();
+  db.prepare(`INSERT INTO customers(id,name,tax_id,contact,phone,whatsapp,email,address,city,install_address,notes,created_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, name, cap(b.taxId, 40), cap(b.contact), cap(b.phone, 40), cap(b.whatsapp, 40),
+    cap(b.email), cap(b.address, 300), cap(b.city), cap(b.installAddress, 300), cap(b.notes, 1000), new Date().toISOString());
+  send(res, 200, { ok: true });
+}, { public: true });
+
 // --- Pricing preview (para el cotizador en vivo) ---
 route('POST', '/api/pricing/preview', async (req, res) => {
   const b = await readBody(req);
@@ -278,11 +291,13 @@ function nextQuoteNumber() {
 }
 
 route('GET', '/api/quotes', async (req, res) => {
+  const includeVoided = new URL(req.url, 'http://x').searchParams.get('includeVoided') === '1';
   const rows = db.prepare(`
     SELECT q.*, c.name AS customer_name,
       (SELECT total FROM quote_versions v WHERE v.quote_id=q.id AND v.version=q.current_version) AS total,
       (SELECT margin_pct FROM quote_versions v WHERE v.quote_id=q.id AND v.version=q.current_version) AS margin_pct
     FROM quotes q LEFT JOIN customers c ON c.id=q.customer_id
+    ${includeVoided ? '' : "WHERE q.status <> 'Anulado'"}
     ORDER BY q.created_at DESC`).all();
   send(res, 200, rows);
 });
@@ -392,7 +407,7 @@ route('GET', '/api/dashboard', async (req, res) => {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const q = db.prepare(`SELECT q.status, v.total, v.margin_pct FROM quotes q
     JOIN quote_versions v ON v.quote_id=q.id AND v.version=q.current_version
-    WHERE q.created_at >= ?`).all(monthStart);
+    WHERE q.created_at >= ? AND q.status <> 'Anulado'`).all(monthStart);
   const approvedStates = ['Aprobado', 'Seña recibida', 'Finalizado', 'Cobrado'];
   const lostStates = ['Perdido / rechazado', 'Vencido'];
   const total = q.reduce((s, r) => s + (r.total || 0), 0);
@@ -542,7 +557,7 @@ route('GET', '/api/stats', async (req, res) => {
       v.total,v.cost,v.profit,v.margin_pct
     FROM quotes q JOIN quote_versions v ON v.quote_id=q.id AND v.version=q.current_version
     LEFT JOIN customers c ON c.id=q.customer_id
-    WHERE q.created_at BETWEEN ? AND ?`).all(fromISO, toISO);
+    WHERE q.created_at BETWEEN ? AND ? AND q.status <> 'Anulado'`).all(fromISO, toISO);
 
   const months = {};
   const bucket = (k) => (months[k] ||= { key: k, label: mlabel(k), quoted: 0, approved: 0, lost: 0, count: 0, estProfit: 0 });

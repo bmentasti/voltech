@@ -6,6 +6,36 @@ const $ = (s, r = document) => r.querySelector(s);
 const el = (h) => { const t = document.createElement('template'); t.innerHTML = h.trim(); return t.content.firstChild; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// ---------- campos de contraseña con "ojo" para ver/ocultar ----------
+const EYE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+// Genera un input de contraseña con botón para mostrar/ocultar. attrs extra opcional.
+const pwField = (id, attrs = '') => `<span class="pw-wrap"><input id="${id}" type="password" ${attrs}/><button type="button" class="pw-toggle" tabindex="-1" aria-label="Mostrar contraseña">${EYE}</button></span>`;
+
+// Listeners globales (delegados: sobreviven a los re-render de innerHTML)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest?.('.pw-toggle');
+  if (!btn) return;
+  e.preventDefault();
+  const inp = btn.parentElement.querySelector('input');
+  if (!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? EYE_OFF : EYE;
+  btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+});
+// Filtra en vivo lo que se escribe en campos numéricos
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.matches?.('[data-digits]')) {                 // solo dígitos (CUIT/DNI)
+    const v = t.value.replace(/\D/g, '');
+    if (v !== t.value) t.value = v;
+  } else if (t.matches?.('[data-phone]')) {           // teléfonos: dígitos y + - ( ) espacio
+    const v = t.value.replace(/[^\d+()\s-]/g, '');
+    if (v !== t.value) t.value = v;
+  }
+});
+
 const fmtARS = (n) => '$ ' + (Math.round(Number(n) || 0)).toLocaleString('es-AR');
 const fmtUSD = (n) => 'US$ ' + (Number(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n) => (Number(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
@@ -106,7 +136,7 @@ function renderLogin() {
       <h1>Presupuestos &amp; Gestión</h1>
       <div id="lerr"></div>
       <label class="fld"><span>Usuario</span><input id="u" autocomplete="username" value="Voltech" /></label>
-      <label class="fld"><span>Contraseña</span><input id="p" type="password" autocomplete="current-password" /></label>
+      <label class="fld"><span>Contraseña</span>${pwField('p', 'autocomplete="current-password"')}</label>
       <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" type="submit">Ingresar</button>
     </form></div>`));
   const form = $('.login-card');
@@ -210,8 +240,8 @@ function userMenu() {
 function changePassword() {
   const m = modal(`<div class="modal-head"><h4>Cambiar contraseña</h4><button class="close-x" data-close>&times;</button></div>
     <div class="modal-body">
-      <label class="fld"><span>Contraseña actual</span><input id="c" type="password"/></label>
-      <label class="fld"><span>Nueva contraseña (mín. 6)</span><input id="n" type="password"/></label>
+      <label class="fld"><span>Contraseña actual</span>${pwField('c')}</label>
+      <label class="fld"><span>Nueva contraseña (mín. 6)</span>${pwField('n')}</label>
     </div>
     <div class="modal-foot"><button class="btn ghost" data-close>Cancelar</button><button class="btn primary" id="s">Guardar</button></div>`);
   m.q('#s').addEventListener('click', async () => {
@@ -319,7 +349,7 @@ async function viewProducts(c) {
       <td>${esc(p.description || '')}</td>
       <td class="muted" style="font-size:12px">${esc(p.category || '')}</td>
       <td class="muted" style="font-size:12px">${esc(p.technology || '')}</td>
-      <td class="num">${p.netUSD != null ? p.netUSD.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '—'}</td>
+      <td class="num">${p.netUSD != null ? p.netUSD.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
       <td class="num muted">${p.iva != null ? (p.iva * 100).toLocaleString('es-AR') + '%' : '—'}</td>
       <td class="num"><b>${p.priceARS != null ? fmtARS(p.priceARS) : '—'}</b></td>
       <td>${stateBadge(p.updateState)}</td></tr>`).join('') || `<tr><td colspan="8" class="empty">Sin resultados</td></tr>`;
@@ -336,7 +366,7 @@ async function viewCustomers(c) {
   const list = await api('/customers');
   c.innerHTML = `
     <div class="page-head"><div><h3>Clientes</h3><div class="sub">${list.length} clientes</div></div>
-      <button class="btn primary" id="newc">${I.plus} Nuevo cliente</button></div>
+      <div class="page-actions"><button class="btn" id="linkc">${I.upload} Link de alta</button><button class="btn primary" id="newc">${I.plus} Nuevo cliente</button></div></div>
     <div class="panel"><div class="table-wrap"><table>
       <thead><tr><th>Nombre / Razón social</th><th>Contacto</th><th>Teléfono</th><th>Localidad</th><th class="num">Presupuestos</th><th></th></tr></thead>
       <tbody>${list.map((c) => `<tr>
@@ -345,7 +375,28 @@ async function viewCustomers(c) {
         <td class="num"><button class="btn sm" data-edit="${c.id}">Editar</button></td></tr>`).join('') || `<tr><td colspan="6" class="empty">Todavía no cargaste clientes</td></tr>`}</tbody>
     </table></div></div>`;
   $('#newc').addEventListener('click', () => customerModal());
+  $('#linkc').addEventListener('click', () => intakeLinkModal());
   c.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => customerModal(list.find((x) => x.id === b.dataset.edit))));
+}
+
+// Modal con el link del formulario público de alta de clientes
+function intakeLinkModal() {
+  const url = location.origin + '/alta.html';
+  const waText = `¡Hola! Para agilizar tu presupuesto en VOLTECH, completá tus datos en este formulario: ${url} — ¡Gracias!`;
+  const m = modal(`<div class="modal-head"><h4>Link de alta de clientes</h4><button class="close-x" data-close>&times;</button></div>
+    <div class="modal-body">
+      <p class="muted" style="font-size:13px;margin:0 0 14px">Compartí este link con tu cliente. Cuando lo complete, se carga automáticamente en tu lista de clientes.</p>
+      <label class="fld"><span>Link del formulario</span><input id="intakeUrl" value="${esc(url)}" readonly onclick="this.select()"/></label>
+      <div class="row">
+        <button class="btn" id="copyLink" style="justify-content:center">Copiar link</button>
+        <button class="btn primary" id="copyWa" style="justify-content:center">Copiar mensaje para WhatsApp</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" data-close>Cerrar</button><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Abrir formulario</a></div>`);
+  m.q('#copyLink').addEventListener('click', () =>
+    navigator.clipboard.writeText(url).then(() => toast('Link copiado', 'ok'), () => toast('No se pudo copiar', 'err')));
+  m.q('#copyWa').addEventListener('click', () =>
+    navigator.clipboard.writeText(waText).then(() => toast('Mensaje copiado para WhatsApp', 'ok'), () => toast('No se pudo copiar', 'err')));
 }
 
 function customerModal(cust = null) {
@@ -353,11 +404,11 @@ function customerModal(cust = null) {
   const m = modal(`<div class="modal-head"><h4>${cust ? 'Editar' : 'Nuevo'} cliente</h4><button class="close-x" data-close>&times;</button></div>
     <div class="modal-body">
       <label class="fld"><span>Nombre / Razón social *</span><input id="name" value="${f('name')}"/></label>
-      <div class="row"><label class="fld"><span>CUIT / DNI</span><input id="taxId" value="${esc(cust?.tax_id || '')}"/></label>
+      <div class="row"><label class="fld"><span>CUIT / DNI</span><input id="taxId" inputmode="numeric" data-digits value="${esc(cust?.tax_id || '')}"/></label>
         <label class="fld"><span>Contacto</span><input id="contact" value="${f('contact')}"/></label></div>
-      <div class="row"><label class="fld"><span>Teléfono</span><input id="phone" value="${f('phone')}"/></label>
-        <label class="fld"><span>WhatsApp</span><input id="whatsapp" value="${f('whatsapp')}"/></label></div>
-      <label class="fld"><span>Email</span><input id="email" value="${f('email')}"/></label>
+      <div class="row"><label class="fld"><span>Teléfono</span><input id="phone" type="tel" inputmode="tel" data-phone value="${f('phone')}"/></label>
+        <label class="fld"><span>WhatsApp</span><input id="whatsapp" type="tel" inputmode="tel" data-phone value="${f('whatsapp')}"/></label></div>
+      <label class="fld"><span>Email</span><input id="email" type="email" inputmode="email" autocapitalize="off" value="${f('email')}"/></label>
       <div class="row"><label class="fld"><span>Dirección</span><input id="address" value="${f('address')}"/></label>
         <label class="fld"><span>Localidad</span><input id="city" value="${f('city')}"/></label></div>
       <label class="fld"><span>Dirección de instalación (si difiere)</span><input id="installAddress" value="${esc(cust?.install_address || '')}"/></label>
@@ -376,25 +427,29 @@ function customerModal(cust = null) {
 
 // ---------- Quotes list ----------
 const stClass = (s) => {
+  if (s === 'Anulado') return '';
   if (['Aprobado', 'Seña recibida', 'Finalizado', 'Cobrado'].includes(s)) return 'g';
   if (['Perdido / rechazado', 'Vencido'].includes(s)) return 'r';
   if (['Enviado', 'En negociación', 'Pendiente de seguimiento'].includes(s)) return 'a';
   return 'b';
 };
-async function viewQuotes(c) {
-  const list = await api('/quotes');
+async function viewQuotes(c, showVoided = false) {
+  const list = await api('/quotes' + (showVoided ? '?includeVoided=1' : ''));
+  const activeCount = list.filter((q) => q.status !== 'Anulado').length;
   c.innerHTML = `
-    <div class="page-head"><div><h3>Presupuestos</h3><div class="sub">${list.length} presupuestos</div></div>
+    <div class="page-head"><div><h3>Presupuestos</h3><div class="sub">${activeCount} presupuestos${showVoided ? ' · incluye anulados' : ''}</div></div>
       <a class="btn primary" href="#/presupuestos/nuevo">${I.plus} Nuevo presupuesto</a></div>
+    <div class="toolbar"><label class="chk"><input type="checkbox" id="showVoided" ${showVoided ? 'checked' : ''}/> Ver anulados</label></div>
     <div class="panel"><div class="table-wrap"><table>
       <thead><tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th class="num">Total</th><th class="num">Margen</th><th></th></tr></thead>
-      <tbody>${list.map((q) => `<tr style="cursor:pointer" data-id="${q.id}">
+      <tbody>${list.map((q) => `<tr style="cursor:pointer" data-id="${q.id}" class="${q.status === 'Anulado' ? 'voided-row' : ''}">
         <td class="mono">${esc(q.number)}</td><td>${esc(q.customer_name || '— sin cliente —')}</td>
         <td class="muted">${fmtDate(q.created_at)}</td><td><span class="st ${stClass(q.status)}">${esc(q.status)}</span></td>
         <td class="num"><b>${fmtARS(q.total)}</b></td><td class="num muted">${q.margin_pct != null ? fmtPct(q.margin_pct) : '—'}</td>
         <td class="num">${I.doc}</td></tr>`).join('') || `<tr><td colspan="7" class="empty">Todavía no creaste presupuestos</td></tr>`}</tbody>
     </table></div></div>`;
   c.querySelectorAll('[data-id]').forEach((r) => r.addEventListener('click', () => location.hash = '#/presupuestos/' + r.dataset.id));
+  $('#showVoided').addEventListener('change', (e) => viewQuotes(c, e.target.checked));
 }
 
 // ---------- Quote builder ----------
@@ -542,11 +597,15 @@ async function viewQuoteDetail(c, id) {
         <h3>${esc(q.number)} <span class="st ${stClass(q.status)}">${esc(q.status)}</span></h3>
         <div class="sub">${esc(q.customer_name || 'Sin cliente')} · ${fmtDate(v.date)}</div></div>
       <div class="page-actions">
-        <select id="status">${STATES.map((s) => `<option ${s === q.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+        ${q.status === 'Anulado'
+          ? `<button class="btn primary" id="restore">Restaurar presupuesto</button>`
+          : `<select id="status">${STATES.map((s) => `<option ${s === q.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>`}
         <button class="btn" id="wa">Copiar para WhatsApp</button>
         <button class="btn primary" id="pdf">${I.doc} PDF</button>
+        ${q.status === 'Anulado' ? '' : `<button class="btn danger" id="void">Anular</button>`}
       </div>
     </div>
+    ${q.status === 'Anulado' ? `<div class="warn" style="margin-bottom:16px">Presupuesto <b>anulado</b>: no se cuenta en las estadísticas ni en la conversión. Podés restaurarlo cuando quieras.</div>` : ''}
     ${dv && Math.abs(dv.pct) >= 0.5 ? `<div class="warn" style="margin-bottom:16px">Este presupuesto utilizó dólar ${fmtARS(dv.used)}. El dólar actual es ${fmtARS(dv.current)}. Variación: ${fmtPct(dv.pct)}.</div>` : ''}
     <div class="row" style="align-items:flex-start">
       <div class="panel" style="flex:2"><div class="table-wrap"><table>
@@ -597,11 +656,20 @@ async function viewQuoteDetail(c, id) {
     </div>`;
   $('#addpay').addEventListener('click', () => paymentModal(id, [{ id, number: q.number, customer_name: q.customer_name, total: v.total }]));
   $('#addbuy').addEventListener('click', () => location.hash = '#/compras');
-  $('#status').addEventListener('change', async (e) => {
+  $('#status')?.addEventListener('change', async (e) => {
     const status = e.target.value; let lostReason = null;
     if (status === 'Perdido / rechazado') lostReason = prompt('Motivo de pérdida (opcional): Precio / Competencia / No respondió / Financiación / Otro') || null;
     await api('/quotes/' + id + '/status', { method: 'PUT', body: { status, lostReason, lastContact: new Date().toISOString() } });
     toast('Estado actualizado', 'ok'); router();
+  });
+  $('#void')?.addEventListener('click', async () => {
+    if (!confirm(`¿Anular el presupuesto ${q.number}? No se contará en las estadísticas. Podés restaurarlo después.`)) return;
+    await api('/quotes/' + id + '/status', { method: 'PUT', body: { status: 'Anulado', lastContact: new Date().toISOString() } });
+    toast('Presupuesto anulado', 'ok'); location.hash = '#/presupuestos';
+  });
+  $('#restore')?.addEventListener('click', async () => {
+    await api('/quotes/' + id + '/status', { method: 'PUT', body: { status: 'Borrador', lastContact: new Date().toISOString() } });
+    toast('Presupuesto restaurado', 'ok'); router();
   });
   $('#pdf').addEventListener('click', () => printQuote(q, v));
   $('#wa').addEventListener('click', () => copyWhatsApp(q, v));
@@ -688,11 +756,11 @@ async function viewConfig(c) {
       <div class="panel panel-pad" style="flex:1">
         <b>Datos de Voltech (para el PDF)</b>
         <label class="fld" style="margin-top:14px"><span>Nombre</span><input id="c_name" value="${esc(company.name || 'VOLTECH')}"/></label>
-        <div class="row"><label class="fld"><span>Teléfono</span><input id="c_phone" value="${esc(company.phone || '')}"/></label>
-          <label class="fld"><span>WhatsApp</span><input id="c_whatsapp" value="${esc(company.whatsapp || '')}"/></label></div>
-        <label class="fld"><span>Email</span><input id="c_email" value="${esc(company.email || '')}"/></label>
+        <div class="row"><label class="fld"><span>Teléfono</span><input id="c_phone" type="tel" inputmode="tel" data-phone value="${esc(company.phone || '')}"/></label>
+          <label class="fld"><span>WhatsApp</span><input id="c_whatsapp" type="tel" inputmode="tel" data-phone value="${esc(company.whatsapp || '')}"/></label></div>
+        <label class="fld"><span>Email</span><input id="c_email" type="email" inputmode="email" autocapitalize="off" value="${esc(company.email || '')}"/></label>
         <div class="row"><label class="fld"><span>Dirección</span><input id="c_address" value="${esc(company.address || '')}"/></label>
-          <label class="fld"><span>CUIT</span><input id="c_cuit" value="${esc(company.cuit || '')}"/></label></div>
+          <label class="fld"><span>CUIT</span><input id="c_cuit" inputmode="numeric" data-digits value="${esc(company.cuit || '')}"/></label></div>
         <label class="fld"><span>Garantía estándar</span><textarea id="warranty">${esc(s.warranty || '')}</textarea></label>
         <label class="fld"><span>Condiciones comerciales</span><textarea id="standardConditions">${esc(s.standardConditions || '')}</textarea></label>
         <button class="btn primary" id="saveCompany">Guardar datos</button>
@@ -934,6 +1002,7 @@ async function viewStats(c) {
       ${kpi('Perdido', fmtARS(cm.totalLost), `${cm.lostCount} perdidos`, 'bad')}
       ${kpi('Conversión', fmtPct(cm.conversion), '')}
       ${kpi('Ticket promedio', fmtARS(cm.avgTicket), '')}
+      ${kpi('Gastos', fmtARS(s.gastos.total), `${s.compras.count} compras`, 'bad')}
     </div>
     <div class="row" style="align-items:flex-start;margin-bottom:16px">
       <div class="panel panel-pad" style="flex:1.4"><b>Cotizado vs Aprobado vs Perdido por mes</b>
@@ -964,6 +1033,17 @@ async function viewStats(c) {
         <div class="sum-row total"><span>Resultado operativo</span><span style="color:${s.resultado.operatingResult >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtARS(s.resultado.operatingResult)}</span></div>
         <div class="sum-row" style="margin-top:8px"><span class="muted">Ganancia proyectada (aprobados)</span><span>${fmtARS(s.profitability.estProfit)}</span></div>
         <div class="sum-row"><span class="muted">Margen promedio</span><span>${fmtPct(s.profitability.avgMargin)}</span></div>
+      </div>
+    </div>
+    <div class="row" style="align-items:flex-start;margin-bottom:16px">
+      <div class="panel panel-pad" style="flex:1"><b>Gastos por categoría</b>
+        ${hbars(Object.entries(s.gastos.byCategory).map(([k, v]) => ({ label: k, value: v })), fmtARS)}
+        <div class="sum-row total"><span>Total gastos</span><span>${fmtARS(s.gastos.total)}</span></div>
+      </div>
+      <div class="panel panel-pad" style="flex:1"><b>Compras</b>
+        <div class="sum-row" style="margin-top:8px"><span class="muted">Total compras</span><span>${fmtARS(s.compras.total)}</span></div>
+        <div class="sum-row"><span class="muted">Compras pendientes de recibir/pagar</span><span style="color:${s.compras.pending > 0 ? 'var(--amber)' : 'var(--green)'}">${fmtARS(s.compras.pending)}</span></div>
+        <div class="sum-row"><span class="muted">Cantidad de compras</span><span>${s.compras.count}</span></div>
       </div>
     </div>`;
 }

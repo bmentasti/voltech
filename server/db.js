@@ -298,7 +298,7 @@ const DEFAULT_SETTINGS = {
   priceListVersion: '1',
   priceListSource: '',
   priceListDate: '',
-  expenseCategories: JSON.stringify(['Alquiler', 'Servicios', 'Vehículos', 'Combustible', 'Herramientas', 'Marketing', 'Software', 'Contador', 'Impuestos', 'Sueldos/colaboradores', 'Otros']),
+  expenseCategories: JSON.stringify(['Mano de obra', 'Ayudante', 'Materiales de instalación', 'Soldadura / herrería', 'Fletes / logística', 'Alquiler de equipos', 'Viáticos', 'Herramientas', 'Combustible', 'Vehículos', 'Alquiler', 'Servicios', 'Marketing', 'Software', 'Contador', 'Impuestos', 'Sueldos/colaboradores', 'Otros']),
   autoDollarUpdate: '1',
 };
 
