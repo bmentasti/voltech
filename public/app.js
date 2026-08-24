@@ -472,7 +472,7 @@ async function viewQuoteBuilder(c) {
           <div class="search" style="position:relative">${I.search}<input id="psearch" placeholder="Buscar producto por código o nombre y agregar…"/></div>
           <div class="pick-list" id="picks" style="display:none"></div>
         </div>
-        <div class="panel"><div class="table-wrap"><table>
+        <div class="panel"><div class="table-wrap"><table class="rtable">
           <thead><tr><th>Código</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:80px">Desc.%</th><th class="num">Unitario</th><th class="num">Total</th><th></th></tr></thead>
           <tbody id="items"></tbody></table></div></div>
         <div class="panel panel-pad" style="margin-top:16px">
@@ -554,13 +554,13 @@ async function viewQuoteBuilder(c) {
     $('#items').innerHTML = state.items.map((it, i) => {
       const line = lines ? lines[i] : null;
       return `<tr>
-        <td class="mono">${esc(it.code)}</td>
-        <td style="font-size:12.5px">${esc(it.description || '')}</td>
-        <td><input type="number" min="1" value="${it.qty}" data-qty="${i}" style="padding:5px"/></td>
-        <td><input type="number" min="0" max="100" value="${it.clientDiscount * 100}" data-disc="${i}" style="padding:5px"/></td>
-        <td class="num">${line ? fmtARS(line.finalUnit) : '…'}</td>
-        <td class="num"><b>${line ? fmtARS(line.lineTotal) : '…'}</b></td>
-        <td class="num"><button class="btn sm danger" data-del="${i}">✕</button></td></tr>`;
+        <td class="mono cell-block" data-label="Código">${esc(it.code)}</td>
+        <td class="cell-block" style="font-size:12.5px" data-label="Descripción">${esc(it.description || '')}</td>
+        <td data-label="Cantidad"><input type="number" min="1" value="${it.qty}" data-qty="${i}" style="padding:5px"/></td>
+        <td data-label="Descuento %"><input type="number" min="0" max="100" value="${it.clientDiscount * 100}" data-disc="${i}" style="padding:5px"/></td>
+        <td class="num" data-label="Unitario">${line ? fmtARS(line.finalUnit) : '…'}</td>
+        <td class="num" data-label="Total"><b>${line ? fmtARS(line.lineTotal) : '…'}</b></td>
+        <td class="num cell-del"><button class="btn sm danger" data-del="${i}">✕ Quitar</button></td></tr>`;
     }).join('') || `<tr><td colspan="7" class="empty" style="padding:30px">Buscá productos arriba para agregarlos</td></tr>`;
     $('#items').querySelectorAll('[data-qty]').forEach((inp) => inp.addEventListener('input', (e) => { state.items[+e.target.dataset.qty].qty = Math.max(1, Number(e.target.value) || 1); recalc(); }));
     $('#items').querySelectorAll('[data-disc]').forEach((inp) => inp.addEventListener('input', (e) => { state.items[+e.target.dataset.disc].clientDiscount = (Number(e.target.value) || 0) / 100; recalc(); }));
@@ -832,7 +832,7 @@ async function purchaseModal() {
         <label class="fld"><span>N° factura / remito</span><input id="invoiceNumber"/></label></div>
       <div class="search" style="margin-bottom:10px">${I.search}<input id="psearch" placeholder="Buscar producto para agregar…"/></div>
       <div class="pick-list" id="picks" style="display:none;margin-bottom:10px"></div>
-      <div class="table-wrap"><table><thead><tr><th>Producto</th><th style="width:60px">Cant.</th><th style="width:90px">Costo USD</th><th class="num">Total ARS</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
+      <div class="table-wrap"><table class="rtable"><thead><tr><th>Producto</th><th style="width:60px">Cant.</th><th style="width:90px">Costo USD</th><th class="num">Total ARS</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
       <div class="row" style="margin-top:10px"><label class="fld"><span>Estado</span><select id="status">${['Pendiente', 'Pedido', 'Parcialmente recibido', 'Recibido', 'Pagado'].map((s) => `<option>${s}</option>`).join('')}</select></label>
         <label class="fld"><span>Entrega estimada</span><input id="expectedDate" type="date"/></label></div>
       <label class="fld"><span>Observaciones</span><textarea id="notes"></textarea></label>
@@ -857,11 +857,11 @@ async function purchaseModal() {
   psearch.addEventListener('input', doSearch);
   function render() {
     m.q('#items').innerHTML = state.items.map((it, i) => `<tr>
-      <td style="font-size:12.5px"><span class="mono">${esc(it.code || '')}</span> ${esc(it.description || '')}</td>
-      <td><input type="number" min="1" value="${it.qty}" data-qty="${i}" style="padding:5px"/></td>
-      <td><input type="number" step="0.01" value="${it.costUSD}" data-cost="${i}" style="padding:5px"/></td>
-      <td class="num">${fmtARS(it.qty * it.costUSD * dollar)}</td>
-      <td><button class="btn sm danger" data-del="${i}">✕</button></td></tr>`).join('') || `<tr><td colspan="5" class="empty" style="padding:20px">Agregá productos</td></tr>`;
+      <td class="cell-block" style="font-size:12.5px" data-label="Producto"><span class="mono">${esc(it.code || '')}</span> ${esc(it.description || '')}</td>
+      <td data-label="Cantidad"><input type="number" min="1" value="${it.qty}" data-qty="${i}" style="padding:5px"/></td>
+      <td data-label="Costo USD"><input type="number" step="0.01" value="${it.costUSD}" data-cost="${i}" style="padding:5px"/></td>
+      <td class="num" data-label="Total ARS">${fmtARS(it.qty * it.costUSD * dollar)}</td>
+      <td class="num cell-del"><button class="btn sm danger" data-del="${i}">✕ Quitar</button></td></tr>`).join('') || `<tr><td colspan="5" class="empty" style="padding:20px">Agregá productos</td></tr>`;
     const total = state.items.reduce((s, it) => s + it.qty * it.costUSD * dollar, 0);
     m.q('#ptotal').textContent = 'Total: ' + fmtARS(total) + ' (dólar ' + fmtARS(dollar) + ')';
     m.q('#items').querySelectorAll('[data-qty]').forEach((x) => x.addEventListener('input', (e) => { state.items[+e.target.dataset.qty].qty = Math.max(1, +e.target.value || 1); render(); }));

@@ -283,4 +283,25 @@ tr:hover td { background: var(--panel-2); }
   .modal, .modal.wide { width: 100%; max-width: 100%; min-height: 100vh;
     max-height: 100vh; border-radius: 0; border: none; }
   .modal-body { padding: 16px; }
+
+  /* Tabla de ítems del cotizador → tarjetas apiladas (sin scroll horizontal).
+     Cada producto se ve como una tarjeta con etiqueta:valor por campo. */
+  .rtable thead { display: none; }
+  .rtable, .rtable tbody, .rtable tr, .rtable td { display: block; width: 100%; }
+  .rtable tr { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+    padding: 6px 12px; background: var(--panel-2); }
+  .rtable tr:hover td { background: transparent; }
+  .rtable td { border: none; padding: 8px 0; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; text-align: right; }
+  .rtable td::before { content: attr(data-label); color: var(--muted); font-size: 12px;
+    font-weight: 600; text-align: left; white-space: nowrap; }
+  .rtable td.cell-block { flex-direction: column; align-items: stretch; text-align: left; gap: 3px;
+    border-bottom: 1px dashed var(--border); padding-bottom: 9px; }
+  .rtable td.cell-block::before { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  .rtable td input { width: auto; max-width: 130px; text-align: right; }
+  .rtable td.cell-del { padding-top: 4px; }
+  .rtable td.cell-del::before { content: none; }
+  .rtable td.cell-del .btn { width: 100%; justify-content: center; }
+  .rtable td.empty { justify-content: center; }
+  .rtable td.empty::before { content: none; }
 }
