@@ -16,6 +16,10 @@ const DB_PATH = process.env.VOLTECH_DB || join(DATA_DIR, 'voltech.db');
 const SEED_PATH = join(DATA_DIR, 'seed.json');
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+// Aseguramos que exista la carpeta de la base (importante cuando VOLTECH_DB
+// apunta a un disco persistente montado fuera del proyecto, ej: /var/data).
+const DB_DIR = dirname(DB_PATH);
+if (!existsSync(DB_DIR)) mkdirSync(DB_DIR, { recursive: true });
 
 export const db = new Database(DB_PATH);
 // WAL mejora la concurrencia; si el filesystem no lo soporta se usa el modo por defecto.

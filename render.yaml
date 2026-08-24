@@ -1,0 +1,18 @@
+# Blueprint de Render para VOLTECH — Presupuestos & Gestión
+# La base SQLite se guarda en un disco persistente montado en /var/data,
+# así los datos sobreviven a cada deploy y reinicio.
+# NOTA: los discos persistentes requieren un plan pago (Starter o superior).
+services:
+  - type: web
+    name: voltech
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: VOLTECH_DB
+        value: /var/data/voltech.db
+    disk:
+      name: voltech-data
+      mountPath: /var/data
+      sizeGB: 1
