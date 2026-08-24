@@ -259,6 +259,15 @@ tr:hover td { background: var(--panel-2); }
   .modal-body { padding: 16px; }
   .modal-head { padding: 14px 16px; }
   .modal-foot { padding: 14px 16px; }
+  /* botones de acción del modal grandes y fáciles de tocar */
+  .modal-foot .btn { flex: 1; justify-content: center; padding: 12px 14px; }
+
+  /* inputs a 16px: evita el zoom automático de iOS al enfocar un campo
+     (la causa típica de que los modales/formularios "salten" en el celular) */
+  input, select, textarea { font-size: 16px; }
+
+  /* inputs numéricos chicos dentro de tablas (cantidades/costos) legibles */
+  td input[type="number"] { min-width: 56px; }
 
   .dollar-chip { font-size: 11px; padding: 6px 10px; }
 }
@@ -267,4 +276,11 @@ tr:hover td { background: var(--panel-2); }
   /* deja sólo el valor del dólar para no desbordar la topbar */
   .dollar-chip .t { display: none; }
   .kpis { grid-template-columns: 1fr 1fr; }
+
+  /* En celulares los modales pasan a pantalla completa (patrón "sheet"):
+     mucho más cómodos que una tarjeta flotante con márgenes. */
+  .overlay { padding: 0; align-items: stretch; }
+  .modal, .modal.wide { width: 100%; max-width: 100%; min-height: 100vh;
+    max-height: 100vh; border-radius: 0; border: none; }
+  .modal-body { padding: 16px; }
 }
