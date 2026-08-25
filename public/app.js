@@ -601,6 +601,7 @@ async function viewQuoteDetail(c, id) {
           ? `<button class="btn primary" id="restore">Restaurar presupuesto</button>`
           : `<select id="status">${STATES.map((s) => `<option ${s === q.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>`}
         <button class="btn" id="wa">Copiar para WhatsApp</button>
+        ${q.status === 'Anulado' ? '' : `<button class="btn" id="review">${I.chart} Pedir reseña</button>`}
         <button class="btn primary" id="pdf">${I.doc} PDF</button>
         ${q.status === 'Anulado' ? '' : `<button class="btn danger" id="void">Anular</button>`}
       </div>
@@ -660,8 +661,12 @@ async function viewQuoteDetail(c, id) {
     const status = e.target.value; let lostReason = null;
     if (status === 'Perdido / rechazado') lostReason = prompt('Motivo de pérdida (opcional): Precio / Competencia / No respondió / Financiación / Otro') || null;
     await api('/quotes/' + id + '/status', { method: 'PUT', body: { status, lostReason, lastContact: new Date().toISOString() } });
-    toast('Estado actualizado', 'ok'); router();
+    toast('Estado actualizado', 'ok');
+    // Al finalizar, se dispara automáticamente el pedido de reseña en Google
+    if (status === 'Finalizado') sendReviewRequest(q);
+    router();
   });
+  $('#review')?.addEventListener('click', () => sendReviewRequest(q));
   $('#void')?.addEventListener('click', async () => {
     if (!confirm(`¿Anular el presupuesto ${q.number}? No se contará en las estadísticas. Podés restaurarlo después.`)) return;
     await api('/quotes/' + id + '/status', { method: 'PUT', body: { status: 'Anulado', lastContact: new Date().toISOString() } });
@@ -673,6 +678,42 @@ async function viewQuoteDetail(c, id) {
   });
   $('#pdf').addEventListener('click', () => printQuote(q, v));
   $('#wa').addEventListener('click', () => copyWhatsApp(q, v));
+}
+
+// Pedido de reseña en Google (se dispara al finalizar, o manualmente)
+function sendReviewRequest(q) {
+  const url = S.settings.googleReviewUrl || '';
+  if (!url) { toast('Configurá el link de reseña en Configuración', 'err'); return; }
+  const tmpl = S.settings.reviewMessage || '{link}';
+  const cliente = String(q.customer_name || q.customer?.name || '').trim().split(/\s+/)[0] || 'cliente';
+  const build = (t) => t.replace(/{cliente}/g, cliente).replace(/{link}/g, url);
+  const cust = q.customer || {};
+  const digits = String(cust.whatsapp || cust.phone || '').replace(/\D/g, '');
+  const waNum = digits ? (digits.startsWith('54') ? digits : '549' + digits.replace(/^0/, '')) : '';
+  const email = cust.email || '';
+  const waHref = (t) => 'https://wa.me/' + waNum + '?text=' + encodeURIComponent(t);
+  const mailHref = (t) => 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent('¿Nos dejás tu reseña en Google?') + '&body=' + encodeURIComponent(t);
+  const msg = build(tmpl);
+  const m = modal(`<div class="modal-head"><h4>Pedir reseña en Google</h4><button class="close-x" data-close>&times;</button></div>
+    <div class="modal-body">
+      <p class="muted" style="font-size:13px;margin:0 0 14px">Presupuesto ${esc(q.number)} finalizado. Enviale al cliente${cliente !== 'cliente' ? ' ' + esc(cliente) : ''} el pedido de reseña con un toque.</p>
+      <label class="fld"><span>Mensaje (podés editarlo)</span><textarea id="revmsg" style="min-height:120px">${esc(msg)}</textarea></label>
+      <div class="row">
+        <a class="btn primary" id="wa" href="${esc(waHref(msg))}" target="_blank" rel="noopener" style="justify-content:center">Enviar por WhatsApp</a>
+        ${email ? `<a class="btn" id="mail" href="${esc(mailHref(msg))}" style="justify-content:center">Enviar por email</a>` : ''}
+      </div>
+      <button class="btn ghost" id="copyrev" style="margin-top:10px;width:100%;justify-content:center">Copiar mensaje</button>
+      ${!waNum && !email ? '<div class="warn" style="margin-top:10px">Este cliente no tiene teléfono ni email cargado. Podés copiar el mensaje o cargar sus datos.</div>' : ''}
+    </div>
+    <div class="modal-foot"><button class="btn ghost" data-close>Cerrar</button></div>`);
+  const sync = () => {
+    const t = m.q('#revmsg').value;
+    m.q('#wa').href = waHref(t);
+    if (m.q('#mail')) m.q('#mail').href = mailHref(t);
+  };
+  m.q('#revmsg').addEventListener('input', sync);
+  m.q('#copyrev').addEventListener('click', () =>
+    navigator.clipboard.writeText(m.q('#revmsg').value).then(() => toast('Mensaje copiado', 'ok'), () => toast('No se pudo copiar', 'err')));
 }
 
 function copyWhatsApp(q, v) {
@@ -776,6 +817,13 @@ async function viewConfig(c) {
       </div>
       <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Valor</th><th>Fuente</th><th>Tipo</th></tr></thead>
         <tbody>${hist.map((h) => `<tr><td class="muted">${fmtDateTime(h.created_at)}</td><td><b>${fmtARS(h.value)}</b></td><td>${esc(h.source || '')}</td><td class="muted">${esc(h.type || '')}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="panel panel-pad" style="margin-top:16px">
+      <b>Reseñas de Google</b>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 14px">Al marcar un presupuesto como <b>Finalizado</b> se abre automáticamente el pedido de reseña para enviarlo por WhatsApp o email. Usá <span class="mono">{cliente}</span> y <span class="mono">{link}</span> en el mensaje.</p>
+      <label class="fld"><span>Link para dejar la reseña</span><input id="googleReviewUrl" value="${esc(s.googleReviewUrl || '')}" placeholder="https://www.google.com/maps?cid=..."/></label>
+      <label class="fld"><span>Mensaje del pedido de reseña</span><textarea id="reviewMessage" style="min-height:90px">${esc(s.reviewMessage || '')}</textarea></label>
+      <button class="btn primary" id="saveReview">Guardar</button>
     </div>`;
   $('#saveComm').addEventListener('click', async () => {
     await api('/settings', { method: 'PUT', body: {
@@ -789,6 +837,10 @@ async function viewConfig(c) {
     const company = { name: $('#c_name').value, phone: $('#c_phone').value, whatsapp: $('#c_whatsapp').value, email: $('#c_email').value, address: $('#c_address').value, cuit: $('#c_cuit').value };
     await api('/settings', { method: 'PUT', body: { company, warranty: $('#warranty').value, standardConditions: $('#standardConditions').value } });
     S.settings = await api('/settings'); toast('Datos guardados', 'ok');
+  });
+  $('#saveReview').addEventListener('click', async () => {
+    await api('/settings', { method: 'PUT', body: { googleReviewUrl: $('#googleReviewUrl').value.trim(), reviewMessage: $('#reviewMessage').value } });
+    S.settings = await api('/settings'); toast('Reseñas configuradas', 'ok');
   });
   $('#rf').addEventListener('click', refreshDollar);
   $('#mn').addEventListener('click', manualDollar);

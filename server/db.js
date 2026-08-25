@@ -304,6 +304,9 @@ const DEFAULT_SETTINGS = {
   priceListDate: '',
   expenseCategories: JSON.stringify(['Mano de obra', 'Ayudante', 'Materiales de instalación', 'Soldadura / herrería', 'Fletes / logística', 'Alquiler de equipos', 'Viáticos', 'Herramientas', 'Combustible', 'Vehículos', 'Alquiler', 'Servicios', 'Marketing', 'Software', 'Contador', 'Impuestos', 'Sueldos/colaboradores', 'Otros']),
   autoDollarUpdate: '1',
+  // Pedido de reseña en Google al finalizar un presupuesto
+  googleReviewUrl: 'https://www.google.com/maps?cid=9282034030525283240',
+  reviewMessage: '¡Hola {cliente}! Gracias por confiar en VOLTECH. Si quedaste conforme con el trabajo, nos ayudaría muchísimo que dejes tu reseña en Google (te lleva menos de un minuto): {link} ¡Muchas gracias!',
 };
 
 export function getSetting(key) {
